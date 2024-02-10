@@ -58,17 +58,22 @@ func (w *watcher) loop(ctx context.Context) {
 	for {
 		newChecksum, err := checksumForPath(w.path)
 		if err != nil {
-			if ignore := w.onErrorFn(err); !ignore {
-				return
-			}
-		}
-
-		if !bytes.EqualFold(w.checksum, newChecksum) {
-			if err := w.onChangeFn(); err != nil {
+			if w.onErrorFn != nil {
 				if ignore := w.onErrorFn(err); !ignore {
 					return
 				}
 			}
+		}
+
+		if !bytes.EqualFold(w.checksum, newChecksum) {
+			if w.onChangeFn != nil {
+				if err := w.onChangeFn(); err != nil {
+					if ignore := w.onErrorFn(err); !ignore {
+						return
+					}
+				}
+			}
+
 			w.checksum = newChecksum
 		}
 
