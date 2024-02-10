@@ -1,0 +1,9 @@
+addr: localhost:8090
+
+routes:
+
+- path: GET /hello/{name}
+  body: |
+    {
+      "hello": "{name}"
+    }

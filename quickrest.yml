@@ -1,0 +1,15 @@
+addr: localhost:8090
+
+routes:
+
+- path: GET /api/1/articles/{id}
+  status: 200
+  body: |
+    {
+        "items": [
+            {
+                "id": {id},
+                "headline": "QuickREST is a hot new thing"
+            }
+        ]
+    }
