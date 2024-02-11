@@ -32,6 +32,7 @@ type Config struct {
 type RouteConfig struct {
 	Path        string            `yaml:"path"`
 	Body        string            `yaml:"body"`
+	BodyJS      string            `yaml:"body_js"`
 	ContentType string            `yaml:"content_type"`
 	Headers     map[string]string `yaml:"headers"`
 	StatusCode  int               `yaml:"status"`
@@ -88,7 +89,7 @@ func setRouteDefaults(r *RouteConfig) {
 }
 
 func resolvePlaceholders(r *RouteConfig) {
-	results := wildcardRegexp.FindAllStringSubmatch(r.Body, -1)
+	results := wildcardRegexp.FindAllStringSubmatch(r.Path, -1)
 
 	if len(results) == 0 {
 		return

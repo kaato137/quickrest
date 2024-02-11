@@ -52,6 +52,39 @@ This would compile and place `quickrest` binary in your `$GOPATH/bin`.
 - **YAML Configuration**: Define endpoints easily using YAML syntax.
 - **Simple CLI**: Run QuickREST with a straightforward command-line interface.
 
+## Templating
+
+QuickREST supports two kinds of templating: basic and JavaScript. Basic templating allows you to insert URL parameters inside the response body like so:
+
+```yaml
+routes:
+
+- path: GET /hello/{name}
+  body: |
+    Hello, {name}!
+```
+
+The JavaScript templating feature enables you to create complex responses:
+
+```yaml
+routes:
+
+- path: GET /api/1/users/{user_id}/notifications
+  body_js: |
+    var result = [];
+
+    for (var i = 0; i < 5; i++) {
+        result.push({
+            "id": parseInt(user_id) + i,
+            "user_id": parseInt(user_id),
+            "description": "You got mail!"
+        });
+    }
+
+    result;
+```
+In the JavaScript templating example, you can utilize JavaScript code to dynamically generate the response body. This allows for more flexibility in crafting responses based on dynamic data or complex logic.
+
 ## Get Started
 
 To get started with QuickREST, simply clone this repository and follow the instructions above to create and run your mocked endpoints.

@@ -19,6 +19,7 @@ type Server struct {
 	cfgMutex sync.RWMutex
 
 	mux         *rwhandler.RWHandler
+	renderer    *Renderer
 	reqRecorder *RequestRecorder
 
 	logger *slog.Logger
@@ -33,6 +34,7 @@ func NewServerFromConfig(cfg *Config) (*Server, error) {
 		return nil, fmt.Errorf("setup mux: %w", err)
 	}
 
+	s.renderer = NewRenderer()
 	s.reqRecorder = NewRequestRecorder(cfg.RecordDir)
 
 	return s, nil
@@ -96,8 +98,10 @@ func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 
 		rw.WriteHeader(route.StatusCode)
 
-		body := formatResponseBody(route, r)
-		fmt.Fprint(rw, body)
+		if err := s.renderBody(rw, r, route); err != nil {
+			s.logger.Error("Failed to render body", err)
+			return
+		}
 
 		if route.Record {
 			if err := s.reqRecorder.Record(formatRouteFilename(route), r); err != nil {
@@ -106,6 +110,28 @@ func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 			}
 		}
 	}
+}
+
+func (s *Server) renderBody(rw http.ResponseWriter, r *http.Request, route RouteConfig) error {
+	var (
+		body []byte
+		err  error
+	)
+	if route.BodyJS != "" {
+		renderCtx := prepareRenderContext(route, r)
+		body, err = s.renderer.Render(route.BodyJS, renderCtx)
+		if err != nil {
+			return fmt.Errorf("render js template: %w", err)
+		}
+	} else {
+		body = formatResponseBody(route, r)
+	}
+
+	if _, err := rw.Write(body); err != nil {
+		return fmt.Errorf("write body: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Server) reloadConfigFile() error {
@@ -129,7 +155,7 @@ func formatRouteFilename(route RouteConfig) string {
 	return fmt.Sprintf("%s-%s.log", rt, date)
 }
 
-func formatResponseBody(rc RouteConfig, r *http.Request) string {
+func formatResponseBody(rc RouteConfig, r *http.Request) []byte {
 	resolvedBody := rc.Body
 	for _, c := range rc.Wildcards {
 		new := r.PathValue(c)
@@ -143,5 +169,14 @@ func formatResponseBody(rc RouteConfig, r *http.Request) string {
 		resolvedBody = strings.ReplaceAll(resolvedBody, old, new)
 	}
 
-	return resolvedBody
+	return []byte(resolvedBody)
+}
+
+func prepareRenderContext(rc RouteConfig, r *http.Request) RenderContext {
+	ctx := make(RenderContext)
+	for _, wc := range rc.Wildcards {
+		ctx[wc] = r.PathValue(wc)
+	}
+
+	return ctx
 }
