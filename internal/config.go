@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	defaultContentType     = "application/json"
-	defaultStatusCode      = http.StatusOK
-	defaultReoloadInterval = 2 * time.Second
-	defaultRecordDir       = "records"
+	defaultContentType    = "application/json"
+	defaultStatusCode     = http.StatusOK
+	defaultReloadInterval = 2 * time.Second
+	defaultRecordDir      = "records"
 )
 
 var wildcardRegexp = regexp.MustCompile(`\{([a-zA-Z][a-zA-Z0-9_]*)\}`)
@@ -69,7 +69,7 @@ func enrichConfig(cfg *Config, path string) {
 
 func setDefaults(cfg *Config) {
 	if cfg.ReloadInterval == 0 {
-		cfg.ReloadInterval = defaultReoloadInterval
+		cfg.ReloadInterval = defaultReloadInterval
 	}
 
 	if cfg.RecordDir == "" {

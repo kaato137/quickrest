@@ -46,7 +46,7 @@ func (s *Server) setupMux() error {
 	router := s.setupRouter()
 	s.mux = rwhandler.New(router)
 
-	if err := s.setupConfigReoload(); err != nil {
+	if err := s.setupConfigReload(); err != nil {
 		return fmt.Errorf("setup config reload: %w", err)
 	}
 
@@ -62,7 +62,7 @@ func (s *Server) setupRouter() *http.ServeMux {
 	return mux
 }
 
-func (s *Server) setupConfigReoload() error {
+func (s *Server) setupConfigReload() error {
 	s.logger.Info("Setup config reload", "interval", s.cfg.ReloadInterval)
 	return filewatch.WatchFilePath(s.cfg.Path).
 		WithInterval(s.cfg.ReloadInterval).
