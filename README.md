@@ -36,6 +36,16 @@ quickrest -c quickrest.yml
 
 That's it! You now have a basic REST API server up and running, ready to serve your mocked endpoints.
 
+## Installation
+
+Just clone this repository and run:
+
+```bash
+go install ./...
+```
+
+This would compile and place `quickrest` binary in your `$GOPATH/bin`.
+
 ## Key Features
 
 - **Rapid Mocking**: Quickly create mocked API endpoints.

@@ -63,7 +63,7 @@ func (s *Server) setupRouter() *http.ServeMux {
 }
 
 func (s *Server) setupConfigReoload() error {
-	s.logger.Info("Setup config reload with", "interval", s.cfg.ReloadInterval)
+	s.logger.Info("Setup config reload", "interval", s.cfg.ReloadInterval)
 	return filewatch.WatchFilePath(s.cfg.Path).
 		WithInterval(s.cfg.ReloadInterval).
 		OnChange(func() error {
