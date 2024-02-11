@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,7 +18,9 @@ type Server struct {
 	cfg      *Config
 	cfgMutex sync.RWMutex
 
-	mux    *rwhandler.RWHandler
+	mux         *rwhandler.RWHandler
+	reqRecorder *RequestRecorder
+
 	logger *slog.Logger
 }
 
@@ -31,6 +32,8 @@ func NewServerFromConfig(cfg *Config) (*Server, error) {
 	if err := s.setupMux(); err != nil {
 		return nil, fmt.Errorf("setup mux: %w", err)
 	}
+
+	s.reqRecorder = NewRequestRecorder(cfg.RecordDir)
 
 	return s, nil
 }
@@ -97,8 +100,8 @@ func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 		fmt.Fprint(rw, body)
 
 		if route.Record {
-			if err := writeMessageToRecordFile(route, r); err != nil {
-				s.logger.Error("Failed to write message to file", err)
+			if err := s.reqRecorder.Record(formatRouteFilename(route), r); err != nil {
+				s.logger.Error("Failed to record request", err)
 				return
 			}
 		}
@@ -119,44 +122,11 @@ func (s *Server) reloadConfigFile() error {
 	return nil
 }
 
-func writeMessageToRecordFile(route RouteConfig, r *http.Request) error {
-	f, err := openRecordFile(route)
-	if err != nil {
-		return err
-	}
-
-	if _, err := f.WriteString(r.Method + " " + r.URL.String() + "\n"); err != nil {
-		return err
-	}
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-
-	if _, err := f.WriteString(string(body) + "\n"); err != nil {
-		return err
-	}
-
-	if _, err := f.WriteString("\n"); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func openRecordFile(route RouteConfig) (*os.File, error) {
-	name := formatRecordFileName(route.Path)
-	flags := os.O_WRONLY | os.O_CREATE | os.O_APPEND
-	return os.OpenFile(name, flags, os.ModePerm)
-}
-
-func formatRecordFileName(route string) string {
+func formatRouteFilename(route RouteConfig) string {
 	date := time.Now().Format("2006-01-02")
-	route = strings.ReplaceAll(route, "/", "_")
-	route = strings.ReplaceAll(route, " ", "")
+	rt := strings.ReplaceAll(route.Path, "/", " ")
 
-	return fmt.Sprintf("%s-%s.log", route, date)
+	return fmt.Sprintf("%s-%s.log", rt, date)
 }
 
 func formatResponseBody(rc RouteConfig, r *http.Request) string {

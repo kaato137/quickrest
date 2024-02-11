@@ -14,6 +14,7 @@ const (
 	defaultContentType     = "application/json"
 	defaultStatusCode      = http.StatusOK
 	defaultReoloadInterval = 2 * time.Second
+	defaultRecordDir       = "records"
 )
 
 var wildcardRegexp = regexp.MustCompile(`\{([a-zA-Z][a-zA-Z0-9_]*)\}`)
@@ -21,6 +22,7 @@ var wildcardRegexp = regexp.MustCompile(`\{([a-zA-Z][a-zA-Z0-9_]*)\}`)
 type Config struct {
 	Address        string        `yaml:"addr"`
 	ReloadInterval time.Duration `yaml:"reload_interval"`
+	RecordDir      string        `yaml:"record_dir"`
 
 	Routes []RouteConfig `yaml:"routes"`
 
@@ -68,6 +70,10 @@ func enrichConfig(cfg *Config, path string) {
 func setDefaults(cfg *Config) {
 	if cfg.ReloadInterval == 0 {
 		cfg.ReloadInterval = defaultReoloadInterval
+	}
+
+	if cfg.RecordDir == "" {
+		cfg.RecordDir = defaultRecordDir
 	}
 }
 
