@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kaato137/quickrest/internal/pkg/filewatch"
@@ -17,6 +19,8 @@ import (
 type Server struct {
 	cfg      *Config
 	cfgMutex sync.RWMutex
+
+	reqID uint64
 
 	mux         *rwhandler.RWHandler
 	renderer    *Renderer
@@ -36,6 +40,8 @@ func NewServerFromConfig(cfg *Config) (*Server, error) {
 
 	s.renderer = NewRenderer()
 	s.reqRecorder = NewRequestRecorder(cfg.RecordDir)
+
+	s.logger.Info("Listen on", "addr", cfg.Address)
 
 	return s, nil
 }
@@ -89,6 +95,14 @@ func (s *Server) setupConfigReload() error {
 
 func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+		reqID := s.ReqID()
+		s.logger.Info("Request started", "id", reqID, "method", r.Method, "url", r.URL.String())
+		defer func(now time.Time) {
+			took := time.Since(now)
+			s.logger.Info("Request ended", "id", reqID, "took", took, "rsp", route.StatusCode)
+		}(now)
+
 		if route.Latency > 0 || route.Jitter > 0 {
 			if err := s.waitLatency(r, route); err != nil {
 				s.logger.Error("Failed during waiting latency", err)
@@ -160,6 +174,10 @@ func (s *Server) waitLatency(r *http.Request, route RouteConfig) error {
 	case <-r.Context().Done():
 		return r.Context().Err()
 	}
+}
+
+func (s *Server) ReqID() uint64 {
+	return atomic.AddUint64(&s.reqID, 1)
 }
 
 func formatRouteFilename(route RouteConfig) string {
