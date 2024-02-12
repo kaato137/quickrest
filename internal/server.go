@@ -89,7 +89,12 @@ func (s *Server) setupConfigReload() error {
 
 func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		s.logger.Info("Req", "mth", r.Method, "url", r.URL.String(), "rsp", route.StatusCode)
+		if route.Latency > 0 || route.Jitter > 0 {
+			if err := s.waitLatency(r, route); err != nil {
+				s.logger.Error("Failed during waiting latency", err)
+				return
+			}
+		}
 
 		rw.Header().Add("Content-Type", route.ContentType)
 		for k, v := range route.Headers {
@@ -148,6 +153,15 @@ func (s *Server) reloadConfigFile() error {
 	return nil
 }
 
+func (s *Server) waitLatency(r *http.Request, route RouteConfig) error {
+	select {
+	case <-time.After(calcWaitDuration(route)):
+		return nil
+	case <-r.Context().Done():
+		return r.Context().Err()
+	}
+}
+
 func formatRouteFilename(route RouteConfig) string {
 	date := time.Now().Format("2006-01-02")
 	rt := strings.ReplaceAll(route.Path, "/", " ")
@@ -179,4 +193,14 @@ func prepareRenderContext(rc RouteConfig, r *http.Request) RenderContext {
 	}
 
 	return ctx
+}
+
+func calcWaitDuration(route RouteConfig) time.Duration {
+	waitDuration := route.Latency
+
+	if route.Jitter > 0 {
+		waitDuration += time.Duration(rand.Int63n(int64(route.Jitter*2))) - route.Jitter
+	}
+
+	return waitDuration
 }

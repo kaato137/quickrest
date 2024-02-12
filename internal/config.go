@@ -37,6 +37,8 @@ type RouteConfig struct {
 	Headers     map[string]string `yaml:"headers"`
 	StatusCode  int               `yaml:"status"`
 	Record      bool              `yaml:"record"`
+	Latency     time.Duration     `yaml:"latency"`
+	Jitter      time.Duration     `yaml:"jitter"`
 
 	Wildcards []string
 }
