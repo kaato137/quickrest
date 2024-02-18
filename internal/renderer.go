@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/robertkrimen/otto"
 )
 
@@ -45,6 +46,30 @@ func (r *Renderer) registerHelperFunctions() {
 		}
 
 		val, err := r.vm.ToValue(intVal)
+		if err != nil {
+			return r.vm.MakeTypeError("failed to make value of out int")
+		}
+
+		return val
+	})
+
+	r.vm.Set("uuid", func(call otto.FunctionCall) otto.Value {
+		args := call.ArgumentList
+
+		if len(args) == 0 {
+			val, err := r.vm.ToValue(uuid.NewString())
+			if err != nil {
+				return r.vm.MakeTypeError(err.Error())
+			}
+			return val
+		}
+
+		arg, err := call.Argument(0).ToString()
+		if err != nil {
+			return r.vm.MakeTypeError(err.Error())
+		}
+
+		val, err := r.vm.ToValue(uuid.NewMD5(uuid.NameSpaceOID, []byte(arg)).String())
 		if err != nil {
 			return r.vm.MakeTypeError("failed to make value of out int")
 		}
