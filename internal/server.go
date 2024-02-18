@@ -88,7 +88,7 @@ func (s *Server) setupConfigReload() error {
 			return nil
 		}).
 		OnError(func(err error) bool {
-			s.logger.Error("Error in file watcher", err)
+			s.logger.Error("Error on config reload. Keeping old configuration", "err", err)
 			return true
 		}).
 		Run(context.Background())
@@ -106,7 +106,7 @@ func (s *Server) handleResponse(route conf.RouteConfig) http.HandlerFunc {
 
 		if route.Latency > 0 || route.Jitter > 0 {
 			if err := s.waitLatency(r, route); err != nil {
-				s.logger.Error("Failed during waiting latency", err)
+				s.logger.Error("Failed during waiting latency", "err", err)
 				return
 			}
 		}
@@ -119,13 +119,13 @@ func (s *Server) handleResponse(route conf.RouteConfig) http.HandlerFunc {
 		rw.WriteHeader(route.StatusCode)
 
 		if err := s.renderBody(rw, r, route); err != nil {
-			s.logger.Error("Failed to render body", err)
+			s.logger.Error("Failed to render body", "err", err)
 			return
 		}
 
 		if route.Record {
 			if err := s.reqRecorder.Record(formatRouteFilename(route), r); err != nil {
-				s.logger.Error("Failed to record request", err)
+				s.logger.Error("Failed to record request", "err", err)
 				return
 			}
 		}

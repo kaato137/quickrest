@@ -59,6 +59,9 @@ func LoadConfigFromFile(path string) (*Config, error) {
 
 	cfgFile, err := os.Open(path)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, ErrConfigFileNotExist
+		}
 		return nil, fmt.Errorf("read file: %w", err)
 	}
 
