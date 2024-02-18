@@ -12,12 +12,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kaato137/quickrest/internal/conf"
 	"github.com/kaato137/quickrest/internal/pkg/filewatch"
 	"github.com/kaato137/quickrest/internal/pkg/rwhandler"
 )
 
 type Server struct {
-	cfg      *Config
+	cfg      *conf.Config
 	cfgMutex sync.RWMutex
 
 	reqID uint64
@@ -29,7 +30,7 @@ type Server struct {
 	logger *slog.Logger
 }
 
-func NewServerFromConfig(cfg *Config) (*Server, error) {
+func NewServerFromConfig(cfg *conf.Config) (*Server, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
 	s := &Server{cfg: cfg, logger: logger}
@@ -93,7 +94,7 @@ func (s *Server) setupConfigReload() error {
 		Run(context.Background())
 }
 
-func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
+func (s *Server) handleResponse(route conf.RouteConfig) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		now := time.Now()
 		reqID := s.ReqID()
@@ -131,7 +132,7 @@ func (s *Server) handleResponse(route RouteConfig) http.HandlerFunc {
 	}
 }
 
-func (s *Server) renderBody(rw http.ResponseWriter, r *http.Request, route RouteConfig) error {
+func (s *Server) renderBody(rw http.ResponseWriter, r *http.Request, route conf.RouteConfig) error {
 	var (
 		body []byte
 		err  error
@@ -157,7 +158,7 @@ func (s *Server) reloadConfigFile() error {
 	s.cfgMutex.Lock()
 	defer s.cfgMutex.Unlock()
 
-	newCfg, err := LoadConfigFromFile(s.cfg.Path)
+	newCfg, err := conf.LoadConfigFromFile(s.cfg.Path)
 	if err != nil {
 		return fmt.Errorf("load config from file: %w", err)
 	}
@@ -167,7 +168,7 @@ func (s *Server) reloadConfigFile() error {
 	return nil
 }
 
-func (s *Server) waitLatency(r *http.Request, route RouteConfig) error {
+func (s *Server) waitLatency(r *http.Request, route conf.RouteConfig) error {
 	select {
 	case <-time.After(calcWaitDuration(route)):
 		return nil
@@ -180,14 +181,14 @@ func (s *Server) ReqID() uint64 {
 	return atomic.AddUint64(&s.reqID, 1)
 }
 
-func formatRouteFilename(route RouteConfig) string {
+func formatRouteFilename(route conf.RouteConfig) string {
 	date := time.Now().Format("2006-01-02")
 	rt := strings.ReplaceAll(route.Path, "/", " ")
 
 	return fmt.Sprintf("%s-%s.log", rt, date)
 }
 
-func formatResponseBody(rc RouteConfig, r *http.Request) []byte {
+func formatResponseBody(rc conf.RouteConfig, r *http.Request) []byte {
 	resolvedBody := rc.Body
 	for _, c := range rc.Wildcards {
 		new := r.PathValue(c)
@@ -204,7 +205,7 @@ func formatResponseBody(rc RouteConfig, r *http.Request) []byte {
 	return []byte(resolvedBody)
 }
 
-func prepareRenderContext(rc RouteConfig, r *http.Request) RenderContext {
+func prepareRenderContext(rc conf.RouteConfig, r *http.Request) RenderContext {
 	ctx := make(RenderContext)
 	for _, wc := range rc.Wildcards {
 		ctx[wc] = r.PathValue(wc)
@@ -213,7 +214,7 @@ func prepareRenderContext(rc RouteConfig, r *http.Request) RenderContext {
 	return ctx
 }
 
-func calcWaitDuration(route RouteConfig) time.Duration {
+func calcWaitDuration(route conf.RouteConfig) time.Duration {
 	waitDuration := route.Latency
 
 	if route.Jitter > 0 {

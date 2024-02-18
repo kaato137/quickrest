@@ -1,4 +1,4 @@
-package internal
+package conf
 
 import (
 	"fmt"
@@ -16,6 +16,11 @@ const (
 	defaultReloadInterval = 2 * time.Second
 	defaultRecordDir      = "records"
 )
+
+var defaultPaths = [...]string{
+	"quickrest.yml",
+	"quickrest.yaml",
+}
 
 var wildcardRegexp = regexp.MustCompile(`\{([a-zA-Z][a-zA-Z0-9_]*)\}`)
 
@@ -44,6 +49,14 @@ type RouteConfig struct {
 }
 
 func LoadConfigFromFile(path string) (*Config, error) {
+	if path == "" {
+		defaultPath, err := findDefaultPaths()
+		if err != nil {
+			return nil, err
+		}
+		path = defaultPath
+	}
+
 	cfgFile, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
