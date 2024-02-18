@@ -1,1 +1,5 @@
+.release/
 vendor/
+records/
+
+**/.DS_Store
