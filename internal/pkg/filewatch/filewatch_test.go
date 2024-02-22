@@ -21,7 +21,7 @@ func TestWatchFilePath(t *testing.T) {
 			return isChangeDetected
 		}
 
-		err := WatchFilePath(file.Name()).
+		closeFn, err := WatchFilePath(file.Name()).
 			OnChange(func() error {
 				isChangeDetected = true
 				return nil
@@ -29,6 +29,7 @@ func TestWatchFilePath(t *testing.T) {
 			Run(context.Background())
 
 		require.NoError(t, err)
+		defer closeFn()
 
 		changeFile(t, file)
 
@@ -50,7 +51,7 @@ func TestWatchFilePath(t *testing.T) {
 			return isErrorOccurred
 		}
 
-		err := WatchFilePath(file.Name()).
+		closeFn, err := WatchFilePath(file.Name()).
 			OnError(func(err error) bool {
 				isErrorOccurred = true
 				theErrorThatOccurred = err
@@ -60,6 +61,7 @@ func TestWatchFilePath(t *testing.T) {
 			Run(context.Background())
 
 		require.NoError(t, err)
+		defer closeFn()
 
 		deleteFile(t, file)
 
@@ -79,7 +81,7 @@ func TestWatchFilePath(t *testing.T) {
 
 		theInterval := time.Hour
 
-		err := WatchFilePath(file.Name()).
+		closeFn, err := WatchFilePath(file.Name()).
 			WithInterval(theInterval).
 			OnChange(func() error {
 				require.FailNow(t,
@@ -90,6 +92,7 @@ func TestWatchFilePath(t *testing.T) {
 			Run(context.Background())
 
 		require.NoError(t, err)
+		defer closeFn()
 
 		leeway := 2 * time.Second
 		time.Sleep(defaultInterval + leeway)

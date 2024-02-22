@@ -27,6 +27,8 @@ type Server struct {
 	renderer    *Renderer
 	reqRecorder *RequestRecorder
 
+	closers []func()
+
 	logger *slog.Logger
 }
 
@@ -51,6 +53,12 @@ func (s *Server) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(rw, r)
 }
 
+func (s *Server) Close() {
+	for _, closeFn := range s.closers {
+		closeFn()
+	}
+}
+
 func (s *Server) setupMux() error {
 	router := s.setupRouter()
 	s.mux = rwhandler.New(router)
@@ -73,7 +81,7 @@ func (s *Server) setupRouter() *http.ServeMux {
 
 func (s *Server) setupConfigReload() error {
 	s.logger.Info("Setup config reload", "interval", s.cfg.ReloadInterval)
-	return filewatch.WatchFilePath(s.cfg.Path).
+	closer, err := filewatch.WatchFilePath(s.cfg.Path).
 		WithInterval(s.cfg.ReloadInterval).
 		OnChange(func() error {
 			s.logger.Info("Config changed. Reloading...")
@@ -92,6 +100,10 @@ func (s *Server) setupConfigReload() error {
 			return true
 		}).
 		Run(context.Background())
+
+	s.appendCloser(closer)
+
+	return err
 }
 
 func (s *Server) handleResponse(route conf.RouteConfig) http.HandlerFunc {
@@ -179,6 +191,10 @@ func (s *Server) waitLatency(r *http.Request, route conf.RouteConfig) error {
 
 func (s *Server) ReqID() uint64 {
 	return atomic.AddUint64(&s.reqID, 1)
+}
+
+func (s *Server) appendCloser(fn func()) {
+	s.closers = append(s.closers, fn)
 }
 
 func formatRouteFilename(route conf.RouteConfig) string {

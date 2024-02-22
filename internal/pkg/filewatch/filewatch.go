@@ -42,18 +42,20 @@ func (w *watcher) OnError(cb func(err error) bool) *watcher {
 	return w
 }
 
-func (w *watcher) Run(ctx context.Context) (err error) {
+func (w *watcher) Run(ctx context.Context) (closeFn func(), err error) {
 	w.checksum, err = checksumForPath(w.path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	go w.loop(ctx)
+	closeChan := make(chan struct{})
 
-	return nil
+	go w.loop(ctx, closeChan)
+
+	return func() { close(closeChan) }, nil
 }
 
-func (w *watcher) loop(ctx context.Context) {
+func (w *watcher) loop(ctx context.Context, closeChan <-chan struct{}) {
 	ticker := time.NewTicker(w.inverval)
 	for {
 		newChecksum, err := checksumForPath(w.path)
@@ -80,6 +82,8 @@ func (w *watcher) loop(ctx context.Context) {
 		select {
 		case <-ticker.C:
 			// continue
+		case <-closeChan:
+			return
 		case <-ctx.Done():
 			return
 		}
