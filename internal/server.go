@@ -3,10 +3,8 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math/rand"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -29,11 +27,11 @@ type Server struct {
 
 	closers []func()
 
-	logger *slog.Logger
+	logger Logger
 }
 
 func NewServerFromConfig(cfg *conf.Config) (*Server, error) {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logger := NewLogger()
 
 	s := &Server{cfg: cfg, logger: logger}
 
@@ -113,7 +111,7 @@ func (s *Server) handleResponse(route conf.RouteConfig) http.HandlerFunc {
 		s.logger.Info("Request started", "id", reqID, "method", r.Method, "url", r.URL.String())
 		defer func(now time.Time) {
 			took := time.Since(now)
-			s.logger.Info("Request ended", "id", reqID, "took", took, "rsp", route.StatusCode)
+			s.logger.Info("Request ended", "id", reqID, "took", took, "code", route.StatusCode)
 		}(now)
 
 		if route.Latency > 0 || route.Jitter > 0 {
